@@ -28,8 +28,29 @@ class GTK_Main(object):
         vbox.add(self.movie_window)
         window.show_all()
 
-        self.player = Gst.ElementFactory.make("playbin", "player")
-        bus = self.player.get_bus()
+        self.pipeline = Gst.Pipeline()
+        self.preview = Gst.ElementFactory.make("autovideosink", "preview")
+        self.player = Gst.ElementFactory.make("rtspsrc", "player")
+        self.decoder = Gst.ElementFactory.make("rtpjpegdepay", "decoder")
+        self.queue = Gst.ElementFactory.make("queue","queue")
+        converter = Gst.ElementFactory.make("jpegdec","converter")
+        colorspace = Gst.ElementFactory.make("videoconvert","colorspace")
+
+        self.pipeline.add(self.player)
+        self.pipeline.add(self.decoder)
+        self.pipeline.add(self.preview)
+        self.pipeline.add(self.queue)
+        self.pipeline.add(converter)
+        self.pipeline.add(colorspace)
+        
+        self.player.link(self.decoder)
+        self.decoder.link(converter)
+        converter.link(colorspace)
+        colorspace.link(self.queue)
+        self.queue.link(self.preview)
+        #self.decoder.link(self.preview)
+
+        bus = self.pipeline.get_bus()
         bus.add_signal_watch()
         bus.enable_sync_message_emission()
         bus.connect("message", self.on_message)
@@ -38,12 +59,10 @@ class GTK_Main(object):
     def start_stop(self, w):
         if self.button.get_label() == "Start":
             filepath = self.entry.get_text().strip()
-            
-            
             self.button.set_label("Stop")
-            self.player.set_property("uri", filepath)
-            self.player.set_state(Gst.State.PLAYING)
-            
+            self.player.set_property("location", filepath)
+            self.pipeline.set_state(Gst.State.PLAYING)
+        
     def on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
@@ -63,6 +82,6 @@ class GTK_Main(object):
 
 
 GObject.threads_init()
-Gst.init(None)        
+Gst.init(None)
 GTK_Main()
 Gtk.main()
