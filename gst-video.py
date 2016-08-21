@@ -35,15 +35,16 @@ class GTK_Main(object):
         bus.connect("message", self.on_message)
         bus.connect("sync-message::element", self.on_sync_message)
 
+
     def start_stop(self, w):
         if self.button.get_label() == "Start":
             filepath = self.entry.get_text().strip()
-            
-            
             self.button.set_label("Stop")
+            bus = self.player.get_bus()
+            #print(dir(bus))
+            bus.connect("message::source-setup", self.on_source_setup)
             self.player.set_property("uri", filepath)
             self.player.set_state(Gst.State.PLAYING)
-            
     def on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
@@ -60,9 +61,16 @@ class GTK_Main(object):
             imagesink = message.src
             imagesink.set_property("force-aspect-ratio", True)
             imagesink.set_window_handle(self.movie_window.get_property('window').get_xid())
+    def on_source_setup(self, bus, message):
+        print(message.get_structure().get_name())
+        if message.get_structure().get_name() == 'notify::source':
+            print("SOURCE SETUP:")
+            src = message.src
+            src.set_property("latency", 0)
+            src.set_property("drop-on-latency", True)
 
 
 GObject.threads_init()
-Gst.init(None)        
+Gst.init(None)
 GTK_Main()
 Gtk.main()
