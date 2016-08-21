@@ -4,11 +4,11 @@ import sys, os
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GObject, Gtk
-
+from gi.repository import GObject, Gst, GstVideo
 class GTK_Main:
     def __init__(self):
         window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
-        window.set_title("Webcam-Viewer")
+        window.set_title("Realtime RTSP Player")
         window.set_default_size(500, 400)
         window.connect("destroy", Gtk.main_quit, "WM destroy")
         vbox = Gtk.VBox()
@@ -29,7 +29,7 @@ class GTK_Main:
         window.show_all()
 
         # Set up the gstreamer pipeline
-        self.player = Gst.parse_launch ("rtspsrc location=rtsp://10.1.201.211/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtpjpegdepay ! jpegdec ! videoconvert ! glimagesink")
+        self.player = Gst.parse_launch ("rtspsrc location=rtsp://"+sys.argv[1]+"/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtpjpegdepay ! jpegdec ! videoconvert ! autovideosink")
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.enable_sync_message_emission()
@@ -63,11 +63,11 @@ class GTK_Main:
         if not struct:
             return
         message_name = struct.get_name()
-        if message_name == "prepare-xwindow-id":
+        if message_name == "prepare-window-handle":
             # Assign the viewport
             imagesink = message.src
             imagesink.set_property("force-aspect-ratio", True)
-            imagesink.set_xwindow_id(self.movie_window.window.xid)
+            imagesink.set_window_handle(self.movie_window.get_property('window').get_xid())
 
 Gst.init(None)
 GTK_Main()
