@@ -5,72 +5,71 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GObject, Gtk
 
-# Needed for window.get_xid(), xvimagesink.set_window_handle(), respectively:
-from gi.repository import GdkX11, GstVideo
-
-class GTK_Main(object):
-
+class GTK_Main:
     def __init__(self):
         window = Gtk.Window(Gtk.WindowType.TOPLEVEL)
-        window.set_title("Video-Player")
+        window.set_title("Webcam-Viewer")
         window.set_default_size(500, 400)
         window.connect("destroy", Gtk.main_quit, "WM destroy")
         vbox = Gtk.VBox()
         window.add(vbox)
-        hbox = Gtk.HBox()
-        vbox.pack_start(hbox, False, False, 0)
-        self.entry = Gtk.Entry()
-        hbox.add(self.entry)
-        self.button = Gtk.Button("Start")
-        hbox.pack_start(self.button, False, False, 0)
-        self.button.connect("clicked", self.start_stop)
         self.movie_window = Gtk.DrawingArea()
         vbox.add(self.movie_window)
+        hbox = Gtk.HBox()
+        vbox.pack_start(hbox, False, False, 0)
+        hbox.set_border_width(10)
+        hbox.pack_start(Gtk.Label(), False, False, 0)
+        self.button = Gtk.Button("Start")
+        self.button.connect("clicked", self.start_stop)
+        hbox.pack_start(self.button, False, False, 0)
+        self.button2 = Gtk.Button("Quit")
+        self.button2.connect("clicked", self.exit)
+        hbox.pack_start(self.button2, False, False, 0)
+        hbox.add(Gtk.Label())
         window.show_all()
 
-        self.player = Gst.ElementFactory.make("playbin", "player")
+        # Set up the gstreamer pipeline
+        self.player = Gst.parse_launch ("rtspsrc location=rtsp://10.1.201.211/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtpjpegdepay ! jpegdec ! videoconvert ! glimagesink")
         bus = self.player.get_bus()
         bus.add_signal_watch()
         bus.enable_sync_message_emission()
         bus.connect("message", self.on_message)
         bus.connect("sync-message::element", self.on_sync_message)
 
-
     def start_stop(self, w):
         if self.button.get_label() == "Start":
-            filepath = self.entry.get_text().strip()
             self.button.set_label("Stop")
-            bus = self.player.get_bus()
-            #print(dir(bus))
-            bus.connect("message::source-setup", self.on_source_setup)
-            self.player.set_property("uri", filepath)
             self.player.set_state(Gst.State.PLAYING)
+        else:
+            self.player.set_state(Gst.State.NULL)
+            self.button.set_label("Start")
+
+    def exit(self, widget, data=None):
+        Gtk.main_quit()
+
     def on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
             self.player.set_state(Gst.State.NULL)
             self.button.set_label("Start")
         elif t == Gst.MessageType.ERROR:
-            self.player.set_state(Gst.State.NULL)
             err, debug = message.parse_error()
-            print("Error: %s" % err, debug)
+            print ("Error: %s" % err, debug)
+            self.player.set_state(Gst.State.NULL)
             self.button.set_label("Start")
 
     def on_sync_message(self, bus, message):
-        if message.get_structure().get_name() == 'prepare-window-handle':
+        struct = message.get_structure()
+        if not struct:
+            return
+        message_name = struct.get_name()
+        if message_name == "prepare-xwindow-id":
+            # Assign the viewport
             imagesink = message.src
             imagesink.set_property("force-aspect-ratio", True)
-            imagesink.set_window_handle(self.movie_window.get_property('window').get_xid())
-    def on_source_setup(self, bus, message):
-        print(message.get_structure().get_name())
-        if message.get_structure().get_name() == 'notify::source':
-            print("SOURCE SETUP:")
-            src = message.src
-            src.set_property("latency", 0)
-            src.set_property("drop-on-latency", True)
+            imagesink.set_xwindow_id(self.movie_window.window.xid)
 
-
-GObject.threads_init()
 Gst.init(None)
 GTK_Main()
+GObject.threads_init()
 Gtk.main()
