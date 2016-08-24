@@ -27,9 +27,12 @@ class Receiver(object):
         self.fakesink.props.signal_handoffs = True
         self.fakesink.connect("handoff", self.on_gst_buffer)
 
-        self.pipeline.set_state(Gst.State.PLAYING)
+        #self.pipeline.set_state(Gst.State.PLAYING)
         print("TextureGL: INIT_SUCCESS")
-
+    def start_pipeline(self):
+        self.pipeline.set_state(Gst.State.PLAYING)
+    def stop_pipeline(self):
+        self.pipeline.set_state(Gst.State.PAUSED)
     def on_gst_buffer(self, fakesink, buff, pad, data=None):
         #print("TextureGL: GST_BUFFER")
         self.tex_updated = False
