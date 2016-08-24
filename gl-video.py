@@ -14,11 +14,11 @@ def display_func():
 
     # Enable texture map
     glEnable(GL_TEXTURE_2D)
-    
+
     #glBindTexture(GL_TEXTURE_2D, tex)
     receiver.updateTexture()
 
-    
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
@@ -39,7 +39,7 @@ def display_func():
     glFlush()
     glutPostRedisplay()
 def reshape_func(width, height):
-    
+
     glViewport(0, 0, width, height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity();
@@ -54,6 +54,7 @@ def main():
     glutInit(sys.argv)
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(600, 600)
+    glutInitWindowPosition(100,100)
     glutCreateWindow(u"Sample 9")
     glutDisplayFunc(display_func)
     glutReshapeFunc(reshape_func)
