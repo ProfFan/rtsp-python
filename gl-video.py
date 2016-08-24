@@ -7,36 +7,46 @@ import TextureGL
 from gi.repository import Gst
 import pygame
 
-tex = 0
-mipmap = 0
+urls = []
+tex = []
+players = []
 
-def display_func():
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glColor3f(1.0, 1.0, 1.0)
-
+def draw_rect(x,y,w,h,tex_id):
     # Enable texture map
     glEnable(GL_TEXTURE_2D)
 
     #glBindTexture(GL_TEXTURE_2D, tex)
-    receiver.updateTexture()
+    players[tex_id].updateTexture()
 
-
+    glBindTexture(GL_TEXTURE_2D, tex[tex_id])
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
     glBegin(GL_QUADS)
     glTexCoord2f(1.0, 1.0)
-    glVertex3f(8.0, -4.5, -0.0)
+    glVertex3f(x+w, y, -0.0)
 
     glTexCoord2f(0.0, 1.0)
-    glVertex3f(-8.0, -4.5, 0.0)
+    glVertex3f(x, y, 0.0)
 
     glTexCoord2f(0.0, 0.0)
-    glVertex3f(-8.0, 4.5, 0.0)
+    glVertex3f(x, y+h, 0.0)
 
     glTexCoord2f(1.0, 0.0)
-    glVertex3f(8.0, 4.50, -0.0)
+    glVertex3f(x+w, y+h, -0.0)
     glEnd()
+
+def display_func():
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glColor3f(1.0, 1.0, 1.0)
+    #print(urls)
+    step_x = 16/6
+    step_y = 9/6
+    j=-1
+    for i in range(len(urls)):
+        if (i)%6==0:
+            j+=1
+        draw_rect(-8.0+step_x*(i%6),-4.5+step_y*j,step_x,step_y,i)
 
     glFlush()
 
@@ -55,23 +65,31 @@ def main():
 
     global screen
     # Set the width and height of the screen [width,height]
-    size = (1024,576)
+    size = (3008,1692)
     video_flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE
     screen = pygame.display.set_mode(size, video_flags)
-
+    pygame.display.set_caption("Realtime RTSP")
     # Create an OpenGL viewport
     reshape_func(size[0],size[1])
 
     global tex
-    global mipmap
-    global receiver
+    global urls
+    global players
 #    glutInit(sys.argv)
 
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_TEXTURE_2D)
-    tex = glGenTextures(1)
-    receiver = TextureGL.Receiver(tex, "rtspsrc location=rtsp://"+"10.1.201.205"+
-        "/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtph264depay ! decodebin ! videoconvert ! video/x-raw,format=RGB,framerate=0/1 ! fakesink")
+
+    urls = sys.argv[1:]
+
+    for i in range(len(urls)):
+        print("Init Pipeline:"+urls[i])
+        tex_name = glGenTextures(1)
+        tex.append(tex_name)
+        player = TextureGL.Receiver (tex_name, "rtspsrc location=rtsp://"+urls[i]+
+            "/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtpjpegdepay ! decodebin ! videoconvert ! video/x-raw,format=RGB,framerate=0/1 ! fakesink name=display%s" % tex_name)
+        players.append(player)
+        print("INIT_SUCCESS")
 
     done = False
 
@@ -83,6 +101,7 @@ def main():
             reshape_func(event.w, event.h)
         display_func()
         pygame.display.flip()
+    pygame.quit()
 
 if __name__ == '__main__':
     main()

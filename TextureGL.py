@@ -23,7 +23,7 @@ class Receiver(object):
         self.bus.connect('message::eos', self.on_eos)
         self.bus.connect('message::error', self.on_error)
 
-        self.fakesink = self.pipeline.get_by_name('fakesink0')
+        self.fakesink = self.pipeline.get_by_name('display%s'% self.video_tex_id)
         self.fakesink.props.signal_handoffs = True
         self.fakesink.connect("handoff", self.on_gst_buffer)
 
