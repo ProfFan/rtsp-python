@@ -1,10 +1,12 @@
 from OpenGL.GL import *
-from OpenGL.GLUT import *
+from OpenGL.GLU import *
 
-import sys
+import sys,os
 sys.path.append(os.getcwd())
 import TextureGL
 from gi.repository import Gst
+import pygame
+
 tex = 0
 mipmap = 0
 
@@ -37,9 +39,9 @@ def display_func():
     glEnd()
 
     glFlush()
-    glutPostRedisplay()
-def reshape_func(width, height):
 
+def reshape_func(width, height):
+    screen=pygame.display.set_mode((width,height),pygame.OPENGL|pygame.DOUBLEBUF|pygame.RESIZABLE)
     glViewport(0, 0, width, height)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity();
@@ -48,23 +50,39 @@ def reshape_func(width, height):
 
 def main():
     Gst.init([])
+    # Get Pygame ready
+    pygame.init()
+
+    global screen
+    # Set the width and height of the screen [width,height]
+    size = (1024,576)
+    video_flags = pygame.OPENGL | pygame.DOUBLEBUF | pygame.RESIZABLE
+    screen = pygame.display.set_mode(size, video_flags)
+
+    # Create an OpenGL viewport
+    reshape_func(size[0],size[1])
+
     global tex
     global mipmap
     global receiver
-    glutInit(sys.argv)
-    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH)
-    glutInitWindowSize(600, 600)
-    glutInitWindowPosition(100,100)
-    glutCreateWindow(u"Sample 9")
-    glutDisplayFunc(display_func)
-    glutReshapeFunc(reshape_func)
+#    glutInit(sys.argv)
+
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_TEXTURE_2D)
     tex = glGenTextures(1)
-    receiver = TextureGL.Receiver(tex, "rtspsrc location=rtsp://"+"10.1.201.223"+
+    receiver = TextureGL.Receiver(tex, "rtspsrc location=rtsp://"+"10.1.201.205"+
         "/profile?token=media_profile1&SessionTimeout=600000 latency=0 droponlatency=1 ! rtph264depay ! decodebin ! videoconvert ! video/x-raw,format=RGB,framerate=0/1 ! fakesink")
 
-    glutMainLoop()
+    done = False
+
+    while not done:
+        event = pygame.event.poll()
+        if event.type == pygame.QUIT:
+            done = True
+        if event.type == pygame.VIDEORESIZE:
+            reshape_func(event.w, event.h)
+        display_func()
+        pygame.display.flip()
 
 if __name__ == '__main__':
     main()
